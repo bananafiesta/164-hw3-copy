@@ -1,0 +1,28 @@
+(* 4 5), 20
+(/ 20 4), 5
+(* 6 (/ 28 7)), 24
+(/ 88 0), error
+(* -3 5), -15
+(/ -27 3), -9
+(and (zero? 5) 7), false
+(and true true), true
+(and false true), false
+(and (num? 7) 7), 7
+(or true 5), true
+(or false (zero? 0)), true
+(or 7 (zero? 0)), 7
+(or false 45), 45
+(or 7 (/ 1 0)), 7
+(and 8 6), 6
+(and false (/ 1 0)), false
+(and (/ 1 0) 7), error
+(or (/ 1 0) 9), error
+(let ((x 2) (y x)) (+ x y)), error
+(let ((x 2) (y 3)) (+ x y)), 5
+(let ((x 1) (x 2) (x 3)) x), 3
+(let () 3), 3
+(case 5), error
+(case 8 ((+ 3 4) 1) (0 3)), error
+(case (+ 2 3) (0 1) (2 3) (4 5) (5 71)), 71
+(case (+ 7 1) (0 1) (545 400)), 400
+(case 8 (8 1) (8 2)), 1
