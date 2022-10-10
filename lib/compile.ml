@@ -254,10 +254,12 @@ let rec compile_expr : symtab -> int -> s_exp -> directive list =
         let rec label_generator : int list -> string list = 
           fun tag_list ->
             begin match tag_list with
-              head :: [] ->
-                [gensym ("a" ^ string_of_int head)]
-              | head :: tail ->
-                [gensym ("a" ^ string_of_int head)] 
+              _ :: [] ->
+                (* [gensym ("a" ^ string_of_int head)] *)
+                [gensym "caselabel"]
+              | _ :: tail ->
+                (* [gensym ("a" ^ string_of_int head)]  *)
+                [gensym "caselabel"]
                 @ label_generator tail
               | [] ->
                 []
