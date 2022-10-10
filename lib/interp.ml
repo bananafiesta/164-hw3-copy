@@ -199,9 +199,35 @@ let rec interp_expr : environment -> s_exp -> value =
                 raise (Error.Stuck e)
             end
         in
+        let rec case_checker: s_exp list -> value =
+          fun cases ->
+            begin match cases with
+              head :: [] -> 
+                (
+                begin match head with
+                  Lst [Num _; _] ->
+                    Bool true
+                  | _ -> raise (Error.Stuck e)
+                end
+                )
+              | head :: tail -> 
+                (
+                begin match head with
+                Lst [Num _; _] ->
+                  case_checker tail
+                | _ ->
+                  raise (Error.Stuck head)
+                end
+                )
+              | [] -> 
+                raise (Error.Stuck e)
+            end
+        in
           begin match scrutinee with
             Num x -> 
               (* continue execution *)
+              let _ = case_checker rest
+              in
               case_helper x rest
             | _ -> raise (Error.Stuck e)
           end

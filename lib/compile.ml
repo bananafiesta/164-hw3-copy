@@ -233,26 +233,108 @@ let rec compile_expr : symtab -> int -> s_exp -> directive list =
           )
       
       | Lst (Sym "case" :: scrutinee_exp :: rest) ->
-        let rec min_case_finder : s_exp list -> int -> int = 
-          fun remaining current_min ->
-            begin match remaining with
-              head :: rest -> 
-                (
-                begin match head with
-                  Lst [Num x; _] ->
-                    if (x < current_min) then 
-                      (min_case_finder rest x)
-                    else
-                      (min_case_finder rest current_min)
-                  | _ -> 
-                    raise (Error.Stuck e)
-                end
-                )
+        let cases = get_cases rest
+        in
+        let left_side, _ = List.split cases
+        in
+        let min_tag = List.fold_left min (List.nth left_side 0) left_side
+        in
+        let max_tag = List.fold_left max (List.nth left_side 0) left_side
+        in
+        let default_tag = List.nth left_side ((List.length left_side) - 1)
+        in
+        let range_list = List.range min_tag max_tag
+        in
+        let continue_label = 
+          gensym "continue"
+        in
+        let branch_table_label =
+          gensym "branchtable"
+        in
+        let rec label_generator : int list -> string list = 
+          fun tag_list ->
+            begin match tag_list with
+              head :: [] ->
+                [gensym ("a" ^ string_of_int head)]
+              | head :: tail ->
+                [gensym ("a" ^ string_of_int head)] 
+                @ label_generator tail
               | [] ->
-                current_min
+                []
             end
         in
-        []
+        let rec branch_table_filler : string list -> directive list =
+          fun label_list ->
+            begin match label_list with
+              head :: [] ->
+                [DqLabel head]
+              | head :: tail ->
+                [DqLabel head]
+                @ branch_table_filler tail
+              | [] -> 
+                []
+            end
+          in
+        let label_list = label_generator range_list
+        in
+        let default_label = List.nth label_list (default_tag - min_tag)
+      in
+        let rec cases_filler : int list -> directive list = 
+          fun tag_list ->
+            begin match tag_list with
+              head :: [] ->
+                (
+                let exp = List.assoc_opt head cases
+                in
+                if exp = None then
+                  [Label (List.nth label_list (head - min_tag))] 
+                  @ [Jmp default_label]
+                else
+                  begin match exp with
+                    Some result_exp ->
+                      [Label (List.nth label_list (head - min_tag))] 
+                      @ compile_expr tab stack_index result_exp
+                      @ [Jmp continue_label]
+                    | _ -> raise (Error.Stuck e)
+                  end
+                )
+              | head :: tail ->
+                (
+                let exp = List.assoc_opt head cases
+                in
+                if exp = None then 
+                  [Label (List.nth label_list (head - min_tag))] 
+                  @ [Jmp default_label]
+                  @ cases_filler tail
+                else
+                  begin match exp with
+                    Some result_exp ->
+                      [Label (List.nth label_list (head - min_tag))] 
+                      @ compile_expr tab stack_index result_exp
+                      @ [Jmp continue_label]
+                      @ cases_filler tail
+                    | _ -> raise (Error.Stuck e)
+                  end
+                )
+              | [] ->
+                []
+            end
+        in
+        let output = 
+          compile_expr tab stack_index scrutinee_exp
+          @ [Sar (Reg Rax, Imm num_shift)]
+          @ [Sub (Reg Rax, Imm min_tag)]
+          @ [Shl (Reg Rax, Imm 3)]
+          @ [LeaLabel (Reg R8, branch_table_label)]
+          @ [ComputedJmp (MemOffset (Reg R8, Reg Rax))]
+          @ cases_filler range_list
+          @ [Jmp continue_label]
+          @ [Label branch_table_label]
+          @ branch_table_filler label_list
+          @ [Label continue_label]
+
+        in
+        output
 
 
       | Lst [Sym f; arg]->
