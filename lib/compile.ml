@@ -323,6 +323,12 @@ let rec compile_expr : symtab -> int -> s_exp -> directive list =
         let output = 
           compile_expr tab stack_index scrutinee_exp
           @ [Sar (Reg Rax, Imm num_shift)]
+          @ [Mov (Reg R8, Imm min_tag)]
+          @ [Cmp (Reg Rax, Reg R8)]
+          @ [Jl default_label]
+          @ [Mov (Reg R8, Imm max_tag)]
+          @ [Cmp (Reg Rax, Reg R8)]
+          @ [Jg default_label]
           @ [Sub (Reg Rax, Imm min_tag)]
           @ [Shl (Reg Rax, Imm 3)]
           @ [LeaLabel (Reg R8, branch_table_label)]
